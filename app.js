@@ -76,10 +76,7 @@
     bg: store.get("bg", "mountain"),
     cloak: store.get("cloak", "none"),
     panic: store.get("panic", "https://classroom.google.com"),
-    proxyBase: store.get(
-      "proxyBase",
-      "https://starizcool.github.io/crusaders-hub-final---games/scramjet/"
-    ),
+    proxyBase: store.get("proxyBase", "scramjet/"),
     proxyType: store.get("proxyType", "scramjet"),
     gamesPath: store.get("gamesPath", "games/"),
     engine: store.get("engine", "google"),
@@ -920,6 +917,12 @@
 
   function init() {
     try {
+      if (!state.proxyBase) {
+        state.proxyBase = "scramjet/";
+        state.proxyType = "scramjet";
+        store.set("proxyBase", state.proxyBase);
+        store.set("proxyType", state.proxyType);
+      }
       closePlayer();
       setBg(state.bg);
       setCloak(state.cloak);
