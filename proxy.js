@@ -15,17 +15,14 @@
     return;
   }
 
-  var loaded = {};
   function loadScript(src) {
-    if (loaded[src]) return loaded[src];
-    loaded[src] = new Promise(function (resolve, reject) {
+    return new Promise(function (resolve, reject) {
       var s = document.createElement("script");
       s.src = src;
       s.onload = resolve;
       s.onerror = function () { reject(new Error("Failed to load " + src)); };
       document.head.appendChild(s);
     });
-    return loaded[src];
   }
 
   var controller = null;
@@ -34,8 +31,8 @@
     await loadScript("/scram/scramjet.all.js");
     await loadScript("/baremux/index.js");
 
-    var mod = await $scramjetLoadController();
-    controller = new mod.ScramjetController({
+    var loaded = await $scramjetLoadController();
+    controller = new loaded.ScramjetController({
       prefix: "/service/",
       files: {
         wasm: "/scram/scramjet.wasm.wasm",
@@ -48,8 +45,9 @@
       }
     });
 
+    // Save the config FIRST so the service worker can read it, then register.
     await controller.init();
-    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
     await navigator.serviceWorker.ready;
 
     var conn = new BareMux.BareMuxConnection("/baremux/worker.js");
@@ -58,43 +56,11 @@
     console.log("[proxy] Scramjet ready");
   }
 
-  // Old/mismatched Scramjet storage causes "object stores was not found".
-  // Wipe it and start clean.
-  async function resetStorage() {
-    try {
-      var regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(function (r) { return r.unregister(); }));
-    } catch (e) {}
-    try {
-      var dbs = indexedDB.databases ? await indexedDB.databases() : [{ name: "$scramjet" }];
-      await Promise.all(
-        dbs
-          .filter(function (d) { return d.name && /scramjet/i.test(d.name); })
-          .map(function (d) {
-            return new Promise(function (res) {
-              var q = indexedDB.deleteDatabase(d.name);
-              q.onsuccess = q.onerror = q.onblocked = function () { res(); };
-              setTimeout(res, 1500);
-            });
-          })
-      );
-    } catch (e) {}
-  }
-
-  api.ready = boot()
-    .catch(async function (err) {
-      if (/object store|IDBDatabase|transaction/i.test(String(err && err.message))) {
-        console.warn("[proxy] Resetting stale Scramjet storage and retrying…");
-        await resetStorage();
-        return boot();
-      }
-      throw err;
-    })
-    .catch(function (err) {
-      api.error = err;
-      console.error("[proxy] Scramjet failed to start:", err);
-      throw err;
-    });
+  api.ready = boot().catch(function (err) {
+    api.error = err;
+    console.error("[proxy] Scramjet failed to start:", err);
+    throw err;
+  });
   api.ready.catch(function () {});
 
   api.encode = async function (url) {
