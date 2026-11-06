@@ -76,7 +76,10 @@
     bg: store.get("bg", "mountain"),
     cloak: store.get("cloak", "none"),
     panic: store.get("panic", "https://classroom.google.com"),
-    proxyBase: store.get("proxyBase", "scramjet/"),
+    proxyBase: store.get(
+      "proxyBase",
+      "https://starizcool.github.io/crusaders-hub-final---games/scramjet/"
+    ),
     proxyType: store.get("proxyType", "scramjet"),
     gamesPath: store.get("gamesPath", "games/"),
     engine: store.get("engine", "google"),
