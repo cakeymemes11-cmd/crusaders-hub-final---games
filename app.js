@@ -76,8 +76,8 @@
     bg: store.get("bg", "mountain"),
     cloak: store.get("cloak", "none"),
     panic: store.get("panic", "https://classroom.google.com"),
-    proxyBase: store.get("proxyBase", ""),
-    proxyType: store.get("proxyType", "uv"),
+    proxyBase: store.get("proxyBase", "scramjet/"),
+    proxyType: store.get("proxyType", "scramjet"),
     gamesPath: store.get("gamesPath", "games/"),
     engine: store.get("engine", "google"),
     motion: store.get("motion", true)
