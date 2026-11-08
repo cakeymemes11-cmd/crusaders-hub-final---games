@@ -76,7 +76,7 @@
     bg: store.get("bg", "mountain"),
     cloak: store.get("cloak", "none"),
     panic: store.get("panic", "https://classroom.google.com"),
-    proxyBase: store.get("proxyBase", ""),
+    proxyBase: store.get("proxyBase", "scramjet/"),
     proxyType: store.get("proxyType", "scramjet"),
     gamesPath: store.get("gamesPath", "games/"),
     engine: store.get("engine", "google"),
@@ -86,27 +86,18 @@
   function games() {
     return window.CAMPUS_GAMES || [];
   }
-
-  // Older versions saved favorites/recents by game name; convert to unique file names.
-  function migrateKeys() {
-    // Old builds saved a fake relative proxy ("scramjet/") that 404s. Clear it.
-    if ((state.proxyBase || "").replace(/\/+$/, "") === "scramjet") {
-      state.proxyBase = "";
-      store.set("proxyBase", "");
-    }
-    const byName = {};
-    games().forEach((g) => {
-      if (!(g.name in byName)) byName[g.name] = g.file;
-    });
-    const fix = (arr) =>
-      Array.from(new Set(arr.map((k) => (byName[k] && !games().some((g) => g.file === k) ? byName[k] : k))));
-    state.favs = fix(state.favs);
-    state.recent = fix(state.recent);
-    store.set("favs", state.favs);
-    store.set("recent", state.recent);
-  }
   function apps() {
-    return window.CAMPUS_APPS || [];
+    const list = (window.CAMPUS_APPS || []).slice();
+    const hasBible = list.some((a) => /bible/i.test(a.name || ""));
+    if (!hasBible) {
+      list.unshift({
+        name: "Bible",
+        icon: "\u271D",
+        tag: "Read the Bible online",
+        url: "https://www.bible.com/bible"
+      });
+    }
+    return list;
   }
 
   function escapeHtml(s) {
@@ -130,8 +121,7 @@
     }
     link.href =
       c.icon ||
-      "data:image/svg+xml," +
-        encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>");
+      "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>";
     $$("#cloak-options .opt").forEach((b) =>
       b.classList.toggle("active", b.dataset.cloak === key)
     );
@@ -190,6 +180,47 @@
       greet + " · " + days[now.getDay()] + " " + now.getDate() + " " + months[now.getMonth()];
   }
 
+  const TYPER_MESSAGES = [
+    "helloooooooooooooooooooooo",
+    "welcome back, soldier",
+    "stay locked in",
+    "go touch grass (after one more game)",
+    "no homework was harmed here",
+    "deus vult",
+    "you good? you look good",
+    "loading vibes... 100%",
+    "ay lets gooooooo",
+    "blessed be the frame rate"
+  ];
+
+  function startTyper() {
+    const el = $("#typer");
+    if (!el) return;
+    let idx = Math.floor(Math.random() * TYPER_MESSAGES.length);
+    let busy = false;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    async function typeOne() {
+      if (busy) return;
+      busy = true;
+      const msg = TYPER_MESSAGES[idx];
+      idx = (idx + 1) % TYPER_MESSAGES.length;
+      for (let i = 1; i <= msg.length; i++) {
+        el.textContent = msg.slice(0, i);
+        await sleep(70);
+      }
+      await sleep(4000);
+      for (let i = msg.length - 1; i >= 0; i--) {
+        el.textContent = msg.slice(0, i);
+        await sleep(25);
+      }
+      busy = false;
+    }
+
+    typeOne();
+    setInterval(typeOne, 30000);
+  }
+
   function showPage(id) {
     if (!id) return;
     $$(".page").forEach((p) => p.classList.toggle("active", p.id === id));
@@ -198,35 +229,18 @@
 
   function gameUrl(file) {
     const base = state.gamesPath.endsWith("/") ? state.gamesPath : state.gamesPath + "/";
-    return base + encodeURI(file).replace(/#/g, "%23").replace(/\?/g, "%3F");
+    return base + file;
   }
 
-  // Is any proxy usable right now?
-  function proxyAvailable() {
-    if (state.proxyType === "scramjet" && window.ArcadeProxy && window.ArcadeProxy.supported) return true;
-    return !!(state.proxyBase || "").trim();
-  }
-
-  function normalizeUrl(url) {
-    let target = String(url || "").trim();
-    if (!target) return target;
+  function proxied(url) {
+    if (!url) return url;
+    let target = String(url).trim();
     if (!/^https?:\/\//i.test(target)) target = "https://" + target;
-    return target;
-  }
-
-  // Returns a URL that can be loaded in the iframe
-  async function proxied(url) {
-    const target = normalizeUrl(url);
-    if (!target) return target;
-    // Built-in Scramjet (served by server.js)
-    if (state.proxyType === "scramjet" && window.ArcadeProxy && window.ArcadeProxy.supported) {
-      return await window.ArcadeProxy.encode(target);
-    }
-    // External proxy (Ultraviolet / custom Scramjet host / raw)
     const base = (state.proxyBase || "").trim();
     if (!base) return target;
     const prefix = base.endsWith("/") ? base : base + "/";
-    if (state.proxyType === "raw") return prefix + target.replace(/^https?:\/\//i, "");
+    const type = state.proxyType || "uv";
+    if (type === "raw") return prefix + target.replace(/^https?:\/\//i, "");
     return prefix + encodeURIComponent(target);
   }
 
@@ -290,12 +304,12 @@
       favBtn.textContent = state.favs.indexOf(key) >= 0 ? "★" : "☆";
       favBtn.dataset.key = key;
     }
-    if (local && key) {
-      state.recent = [key].concat(state.recent.filter((x) => x !== key)).slice(0, 24);
+    if (title) {
+      state.recent = [title].concat(state.recent.filter((x) => x !== title)).slice(0, 24);
       store.set("recent", state.recent);
     }
 
-    if (!local && !proxyAvailable() && /^https?:\/\//i.test(url) && !opts.forceFrame) {
+    if (!local && !(state.proxyBase || "").trim() && /^https?:\/\//i.test(url) && !opts.forceFrame) {
       showFallback(
         "Opens in a new tab",
         "Sites block embeds. Set a proxy in Settings, or open in a new tab.",
@@ -320,24 +334,12 @@
     }
   }
 
-  async function openExternal(url, title) {
-    const target = normalizeUrl(url);
-    if (!proxyAvailable()) {
-      window.open(target, "_blank", "noopener,noreferrer");
-      return;
-    }
-    try {
-      const finalUrl = await proxied(target);
-      state.originalUrl = target;
-      openPlayer(finalUrl, title || target, title || target, { forceFrame: true });
-    } catch (err) {
-      console.error("[arcade] proxy failed", err);
-      openPlayer(target, title || target, title || target, { forceFrame: true });
-      showFallback(
-        "Proxy isn't ready",
-        "Scramjet failed to start: " + (err && err.message ? err.message : err) + ". Check the browser console and that server.js is running.",
-        target
-      );
+  function openExternal(url, title) {
+    const finalUrl = proxied(url);
+    if ((state.proxyBase || "").trim()) {
+      openPlayer(finalUrl, title || url, title || url, { forceFrame: true });
+    } else {
+      window.open(finalUrl, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -365,8 +367,8 @@
     if (state.sort === "za") list.sort((a, b) => b.name.localeCompare(a.name));
     if (state.sort === "recent") {
       list.sort((a, b) => {
-        const ia = state.recent.indexOf(a.file);
-        const ib = state.recent.indexOf(b.file);
+        const ia = state.recent.indexOf(a.name);
+        const ib = state.recent.indexOf(b.name);
         if (ia === -1 && ib === -1) return a.name.localeCompare(b.name);
         if (ia === -1) return 1;
         if (ib === -1) return -1;
@@ -375,8 +377,8 @@
     }
     if (state.sort === "fav") {
       list.sort((a, b) => {
-        const fa = state.favs.indexOf(a.file) >= 0 ? 0 : 1;
-        const fb = state.favs.indexOf(b.file) >= 0 ? 0 : 1;
+        const fa = state.favs.indexOf(a.name) >= 0 ? 0 : 1;
+        const fb = state.favs.indexOf(b.name) >= 0 ? 0 : 1;
         return fa - fb || a.name.localeCompare(b.name);
       });
     }
@@ -411,14 +413,14 @@
     if (empty) empty.classList.toggle("hidden", list.length > 0);
     grid.innerHTML = list
       .map((g) => {
-        const fav = state.favs.indexOf(g.file) >= 0;
+        const fav = state.favs.indexOf(g.name) >= 0;
         return (
           '<button type="button" class="game-card" data-file="' +
-          escapeHtml(g.file) +
+          String(g.file).replace(/"/g, "") +
           '" data-name="' +
           escapeHtml(g.name) +
           '"><div class="thumb">▶<span class="fav-dot" data-fav="' +
-          escapeHtml(g.file) +
+          escapeHtml(g.name) +
           '">' +
           (fav ? "★" : "☆") +
           '</span></div><div class="name">' +
@@ -516,7 +518,7 @@
     }
     const hit = games().find((g) => (g.name || "").toLowerCase() === val.toLowerCase());
     if (hit) {
-      openPlayer(gameUrl(hit.file), hit.name, hit.file, { local: true });
+      openPlayer(gameUrl(hit.file), hit.name, hit.name, { local: true });
       return;
     }
     doWebSearch(val);
@@ -828,7 +830,7 @@
 
       const game = t.closest(".game-card");
       if (game && game.dataset.file) {
-        openPlayer(gameUrl(game.dataset.file), game.dataset.name, game.dataset.file, {
+        openPlayer(gameUrl(game.dataset.file), game.dataset.name, game.dataset.name, {
           local: true
         });
         return;
@@ -859,10 +861,11 @@
         return;
       }
       if (t.closest("#player-reload")) {
-        if (state.isLocalGame && state.currentUrl) {
-          openPlayer(state.currentUrl, state.currentName, $("#player-fav").dataset.key, { local: true });
-        } else if (state.originalUrl) {
-          openExternal(state.originalUrl, state.currentName);
+        if (state.currentUrl) {
+          openPlayer(state.currentUrl, state.currentName, state.currentName, {
+            local: state.isLocalGame,
+            forceFrame: !state.isLocalGame
+          });
         }
         return;
       }
@@ -903,12 +906,8 @@
           state.proxyBase = proxyEl.value.trim();
           store.set("proxyBase", state.proxyBase);
         }
-        if (!proxyAvailable()) {
-          alert(
-            state.proxyType === "scramjet"
-              ? "Built-in Scramjet isn't running. Start the site with `npm start` (server.js) and open it over http(s), not file://."
-              : "Paste a proxy URL in Settings first."
-          );
+        if (!(state.proxyBase || "").trim()) {
+          alert("Paste a proxy URL in Settings first.");
           return;
         }
         openExternal("https://example.com", "Proxy test");
@@ -959,15 +958,8 @@
         }
       });
 
-    window.addEventListener("message", function (e) {
-      const d = e.data;
-      if (d && d.type === "navigate" && typeof d.url === "string") openExternal(d.url, d.url);
-    });
-
     document.addEventListener("keydown", function (e) {
-      const tag = ((e.target && e.target.tagName) || "").toLowerCase();
-      const typing = tag === "input" || tag === "textarea" || tag === "select" || (e.target && e.target.isContentEditable);
-      if (e.key === "]" && !typing) {
+      if (e.key === "]") {
         window.location.href = state.panic || "https://classroom.google.com";
       }
       if (e.key === "Escape") closePlayer();
@@ -976,7 +968,12 @@
 
   function init() {
     try {
-      migrateKeys();
+      if (!state.proxyBase) {
+        state.proxyBase = "scramjet/";
+        state.proxyType = "scramjet";
+        store.set("proxyBase", state.proxyBase);
+        store.set("proxyType", state.proxyType);
+      }
       closePlayer();
       setBg(state.bg);
       setCloak(state.cloak);
@@ -984,6 +981,7 @@
       setEngine(state.engine);
       updateClock();
       setInterval(updateClock, 1000);
+      startTyper();
       bindCore();
       bindSettings();
       renderLetterChips();
