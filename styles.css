@@ -625,3 +625,24 @@ body[data-bg="aurora"] .sky {
   .field { width: 100%; }
   .profile span { display: none; }
 }
+
+.site-title {
+  font-size: clamp(36px, 7vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+}
+.typer {
+  min-height: 1.4em;
+  margin-bottom: 6px;
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.typer::after {
+  content: "|";
+  margin-left: 2px;
+  opacity: 0.8;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
