@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arcade</title>
+<title>Crusaders Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -43,7 +43,8 @@
 
 <section id="home" class="page active">
   <div class="hero">
-    <p class="tagline">games · ai · search · chat</p>
+    <h1 class="site-title">Crusaders Hub</h1>
+    <p class="typer" id="typer" aria-live="polite"></p>
     <div class="clock" id="clock">00:00</div>
     <div class="greeting" id="greeting">good afternoon</div>
     <form class="search-shell" id="home-search-form" action="#" onsubmit="return false;">
@@ -128,7 +129,7 @@
       <input type="text" id="web-search" placeholder="Search the web…" autocomplete="off">
       <button type="submit" class="go">Search</button>
     </form>
-    <div class="note" style="margin-top:16px">Results load in the player through built-in Scramjet. If Scramjet isn't running, they open in a new tab instead.</div>
+    <div class="note" style="margin-top:16px">Without a proxy, results open in a new tab. With Ultraviolet/Scramjet URL in Settings, they load in the player.</div>
     <h3 class="subhead">Recent searches</h3>
     <div class="chip-row" id="recent-searches"></div>
   </div>
@@ -214,9 +215,9 @@
         </div>
       </div>
       <div class="setting">
-        <label>Custom proxy URL (optional)</label>
+        <label>Proxy base URL</label>
         <input type="text" id="set-proxy" class="field" placeholder="https://your-host.example/service/">
-        <p class="muted small">Leave blank to use the built-in Scramjet (needs <code>npm start</code>). Only fill this in to use a different proxy host.</p>
+        <p class="muted small">Your UV/Scramjet service URL. Search + Apps use this.</p>
         <div class="btn-row" style="margin-top:8px">
           <button type="button" class="btn ghost" id="proxy-test">Test proxy</button>
         </div>
@@ -266,7 +267,6 @@
 </div>
 
 <script src="games.js"></script>
-<script src="proxy.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
